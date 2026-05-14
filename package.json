@@ -1,0 +1,56 @@
+{
+  "name": "flowforge",
+  "version": "1.0.0",
+  "description": "FlowForge is a local-first webhook workflow builder for developers.",
+  "private": true,
+  "type": "commonjs",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "worker:dev": "tsx src/worker/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fardinzam/flowforge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fardinzam/flowforge/issues"
+  },
+  "homepage": "https://github.com/fardinzam/flowforge#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.4",
+    "idb": "^8.0.3",
+    "nanoid": "^5.1.11",
+    "next": "^16.2.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.8.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
+    "jsdom": "^29.1.1",
+    "playwright": "^1.60.0",
+    "tsx": "^4.22.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}
