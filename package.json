@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "FlowForge is a local-first webhook workflow builder for developers.",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "directories": {
     "doc": "docs"
   },
