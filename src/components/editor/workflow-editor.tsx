@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { nanoid } from "nanoid";
+
 import type { WorkflowEvent } from "@/domain/workflows/events";
 import { validateExecutableGraph } from "@/domain/workflows/validation";
 import type { WorkflowGraph, WorkflowPosition } from "@/domain/workflows/types";
@@ -109,7 +111,7 @@ export function WorkflowEditor({
         const node = current.graph.nodes.find((n) => n.id === activeDrag.nodeId);
         if (node) {
           onLocalEventRef.current?.({
-            clientEventId: `local-${Date.now()}`,
+            clientEventId: nanoid(),
             type: "node_moved",
             eventSchemaVersion: 1,
             payload: { nodeId: node.id, position: node.position },
@@ -194,7 +196,7 @@ export function WorkflowEditor({
 
           applyGraphChange((current) => updateSelectedNodeConfig(current, config));
           onLocalEvent?.({
-            clientEventId: `local-${Date.now()}`,
+            clientEventId: nanoid(),
             type: "node_updated",
             eventSchemaVersion: 1,
             payload: {
