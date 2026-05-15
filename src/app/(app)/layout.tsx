@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/server/auth/session";
@@ -24,7 +25,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <main>
       <nav aria-label="FlowForge app navigation">
-        <a href="/workflows">Workflows</a>
+        <Link href="/workflows">Workflows</Link>
         <span>{user.email}</span>
         <form action={signOut}>
           <button type="submit">Sign out</button>

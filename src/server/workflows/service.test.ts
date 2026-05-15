@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createWorkflowForWorkspace,
+  getWorkflowForUser,
   listWorkflowsForWorkspace,
 } from "./service";
 import type {
@@ -47,6 +48,9 @@ function createWorkflowQueries(): WorkflowQueries & {
     },
     async listWorkflowsForWorkspace(workspaceId) {
       return workflows.filter((workflow) => workflow.workspaceId === workspaceId);
+    },
+    async findWorkflowById(workflowId) {
+      return workflows.find((workflow) => workflow.id === workflowId) ?? null;
     },
   };
 }
@@ -116,5 +120,35 @@ describe("workflow service", () => {
         name: "Owned workflow",
       }),
     ]);
+  });
+
+  it("loads a workflow when the user belongs to its workspace", async () => {
+    const queries = createWorkflowQueries();
+    queries.addMembership("user_1", "workspace_1");
+    const workflow = await createWorkflowForWorkspace(
+      { userId: "user_1", workspaceId: "workspace_1", name: "Owned workflow" },
+      queries,
+    );
+
+    await expect(
+      getWorkflowForUser({ userId: "user_1", workflowId: workflow.id }, queries),
+    ).resolves.toMatchObject({
+      id: workflow.id,
+      workspaceId: "workspace_1",
+      name: "Owned workflow",
+    });
+  });
+
+  it("hides workflows from non-members", async () => {
+    const queries = createWorkflowQueries();
+    queries.addMembership("owner", "workspace_1");
+    const workflow = await createWorkflowForWorkspace(
+      { userId: "owner", workspaceId: "workspace_1", name: "Private workflow" },
+      queries,
+    );
+
+    await expect(
+      getWorkflowForUser({ userId: "outsider", workflowId: workflow.id }, queries),
+    ).rejects.toMatchObject({ code: "workflow_not_found" });
   });
 });

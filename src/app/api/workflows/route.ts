@@ -6,6 +6,7 @@ import {
   createWorkflowForWorkspace,
   listWorkflowsForWorkspace,
   WorkflowAccessError,
+  WorkflowNotFoundError,
 } from "@/server/workflows/service";
 
 const createWorkflowRequestSchema = z.object({
@@ -15,6 +16,22 @@ const createWorkflowRequestSchema = z.object({
 
 function workflowAccessResponse() {
   return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+}
+
+export function workflowNotFoundResponse() {
+  return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
+}
+
+export function handleWorkflowRouteError(error: unknown) {
+  if (error instanceof WorkflowAccessError) {
+    return workflowAccessResponse();
+  }
+
+  if (error instanceof WorkflowNotFoundError) {
+    return workflowNotFoundResponse();
+  }
+
+  throw error;
 }
 
 export async function GET(request: Request) {
@@ -37,11 +54,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ workflows });
   } catch (error) {
-    if (error instanceof WorkflowAccessError) {
-      return workflowAccessResponse();
-    }
-
-    throw error;
+    return handleWorkflowRouteError(error);
   }
 }
 
@@ -65,10 +78,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ workflow }, { status: 201 });
   } catch (error) {
-    if (error instanceof WorkflowAccessError) {
-      return workflowAccessResponse();
-    }
-
-    throw error;
+    return handleWorkflowRouteError(error);
   }
 }

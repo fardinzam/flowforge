@@ -1,4 +1,5 @@
 import type { WorkflowSummary } from "@/server/workflows/queries";
+import Link from "next/link";
 
 type WorkflowListProps = {
   workflows: WorkflowSummary[];
@@ -13,7 +14,7 @@ export function WorkflowList({ workflows }: WorkflowListProps) {
     <ul aria-label="Workflows">
       {workflows.map((workflow) => (
         <li key={workflow.id}>
-          <strong>{workflow.name}</strong>
+          <Link href={`/workflows/${workflow.id}`}>{workflow.name}</Link>
           <span>Version {workflow.version}</span>
         </li>
       ))}

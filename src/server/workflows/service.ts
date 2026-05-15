@@ -10,6 +10,14 @@ export class WorkflowAccessError extends Error {
   }
 }
 
+export class WorkflowNotFoundError extends Error {
+  readonly code = "workflow_not_found";
+
+  constructor() {
+    super("Workflow not found");
+  }
+}
+
 export type CreateWorkflowInput = {
   userId: string;
   workspaceId: string;
@@ -19,6 +27,11 @@ export type CreateWorkflowInput = {
 export type ListWorkflowsInput = {
   userId: string;
   workspaceId: string;
+};
+
+export type GetWorkflowInput = {
+  userId: string;
+  workflowId: string;
 };
 
 export const emptyWorkflowGraph: WorkflowGraph = {
@@ -75,4 +88,27 @@ export async function listWorkflowsForWorkspace(
   await assertWorkspaceAccess(input.userId, input.workspaceId, workflowQueries);
 
   return workflowQueries.listWorkflowsForWorkspace(input.workspaceId);
+}
+
+export async function getWorkflowForUser(
+  input: GetWorkflowInput,
+  queries?: WorkflowQueries,
+): Promise<WorkflowSummary> {
+  const workflowQueries = await getWorkflowQueries(queries);
+  const workflow = await workflowQueries.findWorkflowById(input.workflowId);
+
+  if (!workflow) {
+    throw new WorkflowNotFoundError();
+  }
+
+  if (
+    !(await workflowQueries.userCanAccessWorkspace(
+      input.userId,
+      workflow.workspaceId,
+    ))
+  ) {
+    throw new WorkflowNotFoundError();
+  }
+
+  return workflow;
 }
