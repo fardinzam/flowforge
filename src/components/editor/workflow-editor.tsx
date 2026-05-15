@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { WorkflowEvent } from "@/domain/workflows/events";
 import { validateExecutableGraph } from "@/domain/workflows/validation";
@@ -42,6 +42,8 @@ export function WorkflowEditor({
     null,
   );
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const onLocalEventRef = useRef(onLocalEvent);
+  useEffect(() => { onLocalEventRef.current = onLocalEvent; });
 
   const nodesById = useMemo(
     () => new Map(state.graph.nodes.map((node) => [node.id, node])),
@@ -93,6 +95,19 @@ export function WorkflowEditor({
     }
 
     function handlePointerUp() {
+      setState((current) => {
+        const node = current.graph.nodes.find((n) => n.id === activeDrag.nodeId);
+        if (node) {
+          onLocalEventRef.current?.({
+            clientEventId: `local-${Date.now()}`,
+            type: "node_moved",
+            eventSchemaVersion: 1,
+            payload: { nodeId: node.id, position: node.position },
+            createdAt: new Date().toISOString(),
+          });
+        }
+        return current;
+      });
       setDragState(null);
     }
 
