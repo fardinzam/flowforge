@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addNode,
   deleteSelectedNode,
   moveNode,
   panViewport,
@@ -35,6 +36,30 @@ const graph: WorkflowGraph = {
 };
 
 describe("editor state", () => {
+  it("adds MVP node types with default config", () => {
+    const state = addNode(
+      { graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }, selectedNodeId: null },
+      "transform_json",
+    );
+
+    expect(state.selectedNodeId).toBe("transform_json_1");
+    expect(state.graph.nodes).toEqual([
+      expect.objectContaining({
+        id: "transform_json_1",
+        type: "transform_json",
+        config: { mappings: [] },
+      }),
+    ]);
+  });
+
+  it("does not add a second webhook trigger", () => {
+    const state = addNode({ graph, selectedNodeId: null }, "webhook_trigger");
+
+    expect(state.graph.nodes.filter((node) => node.type === "webhook_trigger"))
+      .toHaveLength(1);
+    expect(state.selectedNodeId).toBeNull();
+  });
+
   it("selects a node without mutating graph state", () => {
     const state = selectNode({ graph, selectedNodeId: null }, "trigger");
 

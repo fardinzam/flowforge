@@ -1,4 +1,9 @@
-import type { WorkflowGraph, WorkflowPosition } from "@/domain/workflows/types";
+import type { NodeType } from "@/domain/workflows/node-configs";
+import type {
+  WorkflowGraph,
+  WorkflowNode,
+  WorkflowPosition,
+} from "@/domain/workflows/types";
 
 export type EditorState = {
   graph: WorkflowGraph;
@@ -23,6 +28,68 @@ export function clearSelection(state: EditorState): EditorState {
   return {
     ...state,
     selectedNodeId: null,
+  };
+}
+
+function defaultConfigForType(type: NodeType): WorkflowNode["config"] {
+  switch (type) {
+    case "webhook_trigger":
+      return {};
+    case "transform_json":
+      return { mappings: [] };
+    case "condition":
+      return {
+        leftPath: "$.value",
+        operator: "exists",
+      };
+    case "http_request":
+      return {
+        method: "POST",
+        url: "https://example.com/webhook",
+        headers: {},
+        bodyMode: "current_payload",
+      };
+    case "log":
+      return { label: "Log event" };
+  }
+}
+
+function nextNodeId(graph: WorkflowGraph, type: NodeType): string {
+  const existingIds = new Set(graph.nodes.map((node) => node.id));
+  let index = 1;
+
+  while (existingIds.has(`${type}_${index}`)) {
+    index += 1;
+  }
+
+  return `${type}_${index}`;
+}
+
+export function addNode(state: EditorState, type: NodeType): EditorState {
+  if (
+    type === "webhook_trigger" &&
+    state.graph.nodes.some((node) => node.type === "webhook_trigger")
+  ) {
+    return state;
+  }
+
+  const id = nextNodeId(state.graph, type);
+  const node = {
+    id,
+    type,
+    position: {
+      x: 80 + state.graph.nodes.length * 40,
+      y: 96 + state.graph.nodes.length * 32,
+    },
+    config: defaultConfigForType(type),
+  } as WorkflowNode;
+
+  return {
+    selectedNodeId: id,
+    graph: {
+      ...state.graph,
+      nodes: [...state.graph.nodes, node],
+    },
   };
 }
 

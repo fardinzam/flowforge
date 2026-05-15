@@ -6,6 +6,7 @@ import type { WorkflowGraph, WorkflowPosition } from "@/domain/workflows/types";
 
 import { Canvas } from "./canvas";
 import {
+  addNode,
   createEditorState,
   deleteSelectedNode,
   moveNode,
@@ -14,6 +15,7 @@ import {
   zoomViewport,
 } from "./editor-state";
 import { EditorToolbar } from "./editor-toolbar";
+import { NodePalette } from "./node-palette";
 
 type WorkflowEditorProps = {
   initialGraph: WorkflowGraph;
@@ -85,6 +87,12 @@ export function WorkflowEditor({ initialGraph }: WorkflowEditorProps) {
 
   return (
     <section aria-label="Workflow editor">
+      <NodePalette
+        canAddWebhookTrigger={
+          !state.graph.nodes.some((node) => node.type === "webhook_trigger")
+        }
+        onAddNode={(type) => setState((current) => addNode(current, type))}
+      />
       <EditorToolbar
         canDelete={state.selectedNodeId !== null}
         zoom={state.graph.viewport.zoom}

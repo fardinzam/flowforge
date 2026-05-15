@@ -30,6 +30,28 @@ const seededGraph: WorkflowGraph = {
 };
 
 describe("WorkflowEditor", () => {
+  it("adds nodes from the palette and prevents duplicate webhook triggers", () => {
+    render(<WorkflowEditor initialGraph={seededGraph} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add transform json" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add condition" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add http request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add log" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add webhook trigger" }));
+
+    expect(screen.getByRole("button", { name: "transform json transform_json_1" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "condition condition_1" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "http request http_request_1" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "log log_1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add webhook trigger" }))
+      .toBeDisabled();
+    expect(screen.getByRole("button", { name: "webhook trigger trigger" }))
+      .toBeInTheDocument();
+  });
+
   it("renders a seeded graph with nodes and edges", () => {
     render(<WorkflowEditor initialGraph={seededGraph} />);
 
