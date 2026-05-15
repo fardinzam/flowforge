@@ -2,18 +2,19 @@ import { CreateWorkflowDialog } from "@/components/workflows/create-workflow-dia
 import { WorkflowList } from "@/components/workflows/workflow-list";
 import { requireUser } from "@/server/auth/session";
 import { listWorkflowsForWorkspace } from "@/server/workflows/service";
-import { listWorkspacesForUser } from "@/server/workspaces/service";
+import { bootstrapDefaultWorkspace } from "@/server/workspaces/service";
 
 export default async function WorkflowsPage() {
   const user = await requireUser();
-  const workspaces = await listWorkspacesForUser(user.id);
-  const activeWorkspace = workspaces[0];
-  const workflows = activeWorkspace
-    ? await listWorkflowsForWorkspace({
-        userId: user.id,
-        workspaceId: activeWorkspace.id,
-      })
-    : [];
+  const activeWorkspace = await bootstrapDefaultWorkspace({
+    id: user.id,
+    email: user.email,
+    name: user.user_metadata.name,
+  });
+  const workflows = await listWorkflowsForWorkspace({
+    userId: user.id,
+    workspaceId: activeWorkspace.id,
+  });
 
   return (
     <section>

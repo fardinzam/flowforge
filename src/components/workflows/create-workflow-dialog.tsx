@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type CreateWorkflowDialogProps = {
   workspaceId: string;
@@ -12,7 +12,14 @@ export function CreateWorkflowDialog({ workspaceId }: CreateWorkflowDialogProps)
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const mountedTimer = window.setTimeout(() => setIsMounted(true), 0);
+
+    return () => window.clearTimeout(mountedTimer);
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,7 +46,11 @@ export function CreateWorkflowDialog({ workspaceId }: CreateWorkflowDialogProps)
 
   if (!isOpen) {
     return (
-      <button type="button" onClick={() => setIsOpen(true)}>
+      <button
+        disabled={!isMounted}
+        type="button"
+        onClick={() => setIsOpen(true)}
+      >
         New workflow
       </button>
     );
