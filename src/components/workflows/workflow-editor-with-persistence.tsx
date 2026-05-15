@@ -10,6 +10,7 @@ import {
   type LocalEventQueue,
 } from "@/client/sync/local-event-queue";
 import type { SyncStatus } from "@/client/sync/sync-status";
+import { syncPendingEvents } from "@/client/sync/sync-engine";
 import type { WorkflowEvent } from "@/domain/workflows/events";
 import { applyWorkflowEvent } from "@/domain/workflows/reducer";
 import type { WorkflowGraph } from "@/domain/workflows/types";
@@ -35,6 +36,7 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName }: Prop
   const dbRef = useRef<FlowForgeDatabase | null>(null);
   const queueRef = useRef<LocalEventQueue | null>(null);
   const graphRef = useRef<WorkflowGraph>(EMPTY_GRAPH);
+  const syncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,8 +58,7 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName }: Prop
       });
 
       // The snapshot is always up-to-date — it's saved after every local edit.
-      // Pending events are preserved for server sync (Phase 6), not for
-      // graph reconstruction, so we do not replay them here.
+      // Pending events are preserved for server sync, not for graph reconstruction.
       const graph = (await loadSnapshot(db, workflowId)) ?? EMPTY_GRAPH;
 
       if (cancelled) return;
@@ -90,6 +91,17 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName }: Prop
 
       await saveSnapshot(db, workflowId, newGraph);
       setSyncStatus("saved_locally");
+
+      if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
+      syncDebounceRef.current = setTimeout(() => {
+        setSyncStatus("syncing");
+        syncPendingEvents({
+          workflowId,
+          db,
+          queue,
+          onStatusChange: setSyncStatus,
+        });
+      }, 500);
     },
     [workflowId, workflowName],
   );
