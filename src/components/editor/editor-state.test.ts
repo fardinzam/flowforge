@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   addNode,
+  connectNodes,
   deleteSelectedNode,
+  deleteEdge,
   moveNode,
   panViewport,
   selectNode,
@@ -89,6 +91,29 @@ describe("editor state", () => {
       expect.objectContaining({ id: "log" }),
     ]);
     expect(state.graph.edges).toEqual([]);
+  });
+
+  it("connects nodes and deletes edges", () => {
+    const connected = connectNodes(
+      {
+        graph: { ...graph, edges: [] },
+        selectedNodeId: null,
+      },
+      "trigger",
+      "log",
+    );
+
+    expect(connected.graph.edges).toEqual([
+      {
+        id: "edge_trigger_log_1",
+        sourceNodeId: "trigger",
+        targetNodeId: "log",
+      },
+    ]);
+
+    const withoutEdge = deleteEdge(connected, "edge_trigger_log_1");
+
+    expect(withoutEdge.graph.edges).toEqual([]);
   });
 
   it("pans and zooms the viewport", () => {

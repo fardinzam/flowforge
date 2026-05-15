@@ -7,7 +7,9 @@ import type { WorkflowGraph, WorkflowPosition } from "@/domain/workflows/types";
 import { Canvas } from "./canvas";
 import {
   addNode,
+  connectNodes,
   createEditorState,
+  deleteEdge,
   deleteSelectedNode,
   moveNode,
   panViewport,
@@ -28,6 +30,9 @@ type DragState = {
 
 export function WorkflowEditor({ initialGraph }: WorkflowEditorProps) {
   const [state, setState] = useState(() => createEditorState(initialGraph));
+  const [connectingFromNodeId, setConnectingFromNodeId] = useState<string | null>(
+    null,
+  );
   const [dragState, setDragState] = useState<DragState | null>(null);
 
   const nodesById = useMemo(
@@ -103,8 +108,23 @@ export function WorkflowEditor({ initialGraph }: WorkflowEditorProps) {
         onZoom={(zoom) => setState((current) => zoomViewport(current, zoom))}
       />
       <Canvas
+        connectingFromNodeId={connectingFromNodeId}
         graph={state.graph}
         selectedNodeId={state.selectedNodeId}
+        onConnectFrom={setConnectingFromNodeId}
+        onConnectTo={(nodeId) => {
+          if (!connectingFromNodeId) {
+            return;
+          }
+
+          setState((current) =>
+            connectNodes(current, connectingFromNodeId, nodeId),
+          );
+          setConnectingFromNodeId(null);
+        }}
+        onDeleteEdge={(edgeId) =>
+          setState((current) => deleteEdge(current, edgeId))
+        }
         onNodePointerDown={handleNodePointerDown}
       />
     </section>

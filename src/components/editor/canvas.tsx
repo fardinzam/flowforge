@@ -4,14 +4,22 @@ import { EdgeLayer } from "./edge-layer";
 import { NodeCard } from "./node-card";
 
 type CanvasProps = {
+  connectingFromNodeId: string | null;
   graph: WorkflowGraph;
   selectedNodeId: string | null;
+  onConnectFrom(nodeId: string): void;
+  onConnectTo(nodeId: string): void;
+  onDeleteEdge(edgeId: string): void;
   onNodePointerDown(nodeId: string, pointer: WorkflowPosition): void;
 };
 
 export function Canvas({
+  connectingFromNodeId,
   graph,
   selectedNodeId,
+  onConnectFrom,
+  onConnectTo,
+  onDeleteEdge,
   onNodePointerDown,
 }: CanvasProps) {
   return (
@@ -34,12 +42,19 @@ export function Canvas({
           transformOrigin: "0 0",
         }}
       >
-        <EdgeLayer edges={graph.edges} nodes={graph.nodes} />
+        <EdgeLayer
+          edges={graph.edges}
+          nodes={graph.nodes}
+          onDeleteEdge={onDeleteEdge}
+        />
         {graph.nodes.map((node) => (
           <NodeCard
+            isConnectingFrom={node.id === connectingFromNodeId}
             isSelected={node.id === selectedNodeId}
             key={node.id}
             node={node}
+            onConnectFrom={onConnectFrom}
+            onConnectTo={onConnectTo}
             onPointerDown={onNodePointerDown}
           />
         ))}

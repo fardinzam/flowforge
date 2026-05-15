@@ -129,6 +129,71 @@ export function deleteSelectedNode(state: EditorState): EditorState {
   };
 }
 
+function nextEdgeId(
+  graph: WorkflowGraph,
+  sourceNodeId: string,
+  targetNodeId: string,
+): string {
+  const existingIds = new Set(graph.edges.map((edge) => edge.id));
+  let index = 1;
+
+  while (existingIds.has(`edge_${sourceNodeId}_${targetNodeId}_${index}`)) {
+    index += 1;
+  }
+
+  return `edge_${sourceNodeId}_${targetNodeId}_${index}`;
+}
+
+export function connectNodes(
+  state: EditorState,
+  sourceNodeId: string,
+  targetNodeId: string,
+): EditorState {
+  if (sourceNodeId === targetNodeId) {
+    return state;
+  }
+
+  const nodeIds = new Set(state.graph.nodes.map((node) => node.id));
+
+  if (!nodeIds.has(sourceNodeId) || !nodeIds.has(targetNodeId)) {
+    return state;
+  }
+
+  if (
+    state.graph.edges.some(
+      (edge) =>
+        edge.sourceNodeId === sourceNodeId && edge.targetNodeId === targetNodeId,
+    )
+  ) {
+    return state;
+  }
+
+  return {
+    ...state,
+    graph: {
+      ...state.graph,
+      edges: [
+        ...state.graph.edges,
+        {
+          id: nextEdgeId(state.graph, sourceNodeId, targetNodeId),
+          sourceNodeId,
+          targetNodeId,
+        },
+      ],
+    },
+  };
+}
+
+export function deleteEdge(state: EditorState, edgeId: string): EditorState {
+  return {
+    ...state,
+    graph: {
+      ...state.graph,
+      edges: state.graph.edges.filter((edge) => edge.id !== edgeId),
+    },
+  };
+}
+
 export function panViewport(
   state: EditorState,
   delta: WorkflowPosition,

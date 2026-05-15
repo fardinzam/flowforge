@@ -87,4 +87,17 @@ describe("WorkflowEditor", () => {
     expect(screen.queryByRole("button", { name: "log log" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("edge trigger to log")).not.toBeInTheDocument();
   });
+
+  it("connects nodes with handles and deletes edges", () => {
+    render(<WorkflowEditor initialGraph={{ ...seededGraph, edges: [] }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Connect from trigger" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect to log" }));
+
+    expect(screen.getByLabelText("edge trigger to log")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete edge trigger to log" }));
+
+    expect(screen.queryByLabelText("edge trigger to log")).not.toBeInTheDocument();
+  });
 });

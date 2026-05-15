@@ -1,8 +1,13 @@
 import type { WorkflowNode, WorkflowPosition } from "@/domain/workflows/types";
 
+import { ConnectionHandles } from "./connection-handles";
+
 type NodeCardProps = {
   node: WorkflowNode;
   isSelected: boolean;
+  isConnectingFrom: boolean;
+  onConnectFrom(nodeId: string): void;
+  onConnectTo(nodeId: string): void;
   onPointerDown(nodeId: string, pointer: WorkflowPosition): void;
 };
 
@@ -10,11 +15,18 @@ function formatNodeType(type: string): string {
   return type.replaceAll("_", " ");
 }
 
-export function NodeCard({ node, isSelected, onPointerDown }: NodeCardProps) {
+export function NodeCard({
+  node,
+  isSelected,
+  isConnectingFrom,
+  onConnectFrom,
+  onConnectTo,
+  onPointerDown,
+}: NodeCardProps) {
   const label = formatNodeType(node.type);
 
   return (
-    <button
+    <div
       aria-label={`${label} ${node.id}`}
       data-position={`${node.position.x},${node.position.y}`}
       data-testid={`node-${node.id}`}
@@ -25,6 +37,7 @@ export function NodeCard({ node, isSelected, onPointerDown }: NodeCardProps) {
           y: event.clientY,
         });
       }}
+      role="button"
       style={{
         position: "absolute",
         left: node.position.x,
@@ -43,12 +56,18 @@ export function NodeCard({ node, isSelected, onPointerDown }: NodeCardProps) {
         textAlign: "left",
         touchAction: "none",
       }}
-      type="button"
+      tabIndex={0}
     >
       <span style={{ display: "block", fontSize: 12, color: "#475569" }}>
         {label}
       </span>
       <strong style={{ display: "block", marginTop: 6 }}>{node.id}</strong>
-    </button>
+      <ConnectionHandles
+        isConnectingFrom={isConnectingFrom}
+        nodeId={node.id}
+        onConnectFrom={onConnectFrom}
+        onConnectTo={onConnectTo}
+      />
+    </div>
   );
 }
