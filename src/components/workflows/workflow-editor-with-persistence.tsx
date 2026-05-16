@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { addPendingEvent, getPendingEvents } from "@/client/db/pending-event-store";
-import { loadSnapshot, saveSnapshot } from "@/client/db/workflow-store";
+import { clearPendingEvents, addPendingEvent, getPendingEvents } from "@/client/db/pending-event-store";
+import { deleteSnapshot, loadSnapshot, saveSnapshot } from "@/client/db/workflow-store";
 import { openFlowForgeDB, type FlowForgeDatabase } from "@/client/db/indexed-db";
+import { getSyncMetadata } from "@/client/db/sync-metadata-store";
 import {
   createLocalEventQueue,
   type LocalEventQueue,
@@ -15,6 +16,8 @@ import type { WorkflowEvent } from "@/domain/workflows/events";
 import { applyWorkflowEvent } from "@/domain/workflows/reducer";
 import type { WorkflowGraph } from "@/domain/workflows/types";
 
+import { ConflictRecoveryDialog } from "../sync/conflict-recovery-dialog";
+import { RefreshRequiredBanner } from "../sync/refresh-required-banner";
 import { WorkflowEditor } from "../editor/workflow-editor";
 
 const EMPTY_GRAPH: WorkflowGraph = {
@@ -33,6 +36,11 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, server
   const [isLoaded, setIsLoaded] = useState(false);
   const [initialGraph, setInitialGraph] = useState<WorkflowGraph>(EMPTY_GRAPH);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("saved_locally");
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [localRevision, setLocalRevision] = useState(0);
+  // db and queue stored in state for safe JSX access; refs used in callbacks
+  const [dbState, setDbState] = useState<FlowForgeDatabase | null>(null);
+  const [queueState, setQueueState] = useState<LocalEventQueue | null>(null);
 
   const dbRef = useRef<FlowForgeDatabase | null>(null);
   const queueRef = useRef<LocalEventQueue | null>(null);
@@ -48,7 +56,8 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, server
       if (cancelled) return;
 
       dbRef.current = db;
-      queueRef.current = createLocalEventQueue(workflowId, {
+      setDbState(db);
+      const queue = createLocalEventQueue(workflowId, {
         add: (wfId, event) => addPendingEvent(db, wfId, event),
         getAll: (wfId) => getPendingEvents(db, wfId),
         remove: async (wfId, clientEventId) => {
@@ -58,15 +67,22 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, server
           await removePendingEvent(db, wfId, clientEventId);
         },
       });
+      queueRef.current = queue;
+      setQueueState(queue);
 
-      // Prefer the local IndexedDB snapshot (always current after edits).
-      // Fall back to the server graph so other browsers see synced state.
-      const graph = (await loadSnapshot(db, workflowId)) ?? serverGraphRef.current;
+      const [snapshot, metadata] = await Promise.all([
+        loadSnapshot(db, workflowId),
+        getSyncMetadata(db, workflowId),
+      ]);
 
       if (cancelled) return;
 
+      // Prefer the local IndexedDB snapshot (always current after edits).
+      // Fall back to the server graph so other browsers see synced state.
+      const graph = snapshot ?? serverGraphRef.current;
       graphRef.current = graph;
       setInitialGraph(graph);
+      setLocalRevision(metadata?.serverRevision ?? 0);
       setIsLoaded(true);
     }
 
@@ -108,6 +124,14 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, server
     [workflowId, workflowName],
   );
 
+  async function handleDiscardAndReload() {
+    const db = dbRef.current;
+    if (!db) return;
+    await clearPendingEvents(db, workflowId);
+    await deleteSnapshot(db, workflowId);
+    window.location.reload();
+  }
+
   if (!isLoaded) {
     return <p>Loading editor...</p>;
   }
@@ -115,6 +139,19 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, server
   return (
     <section>
       <p>Status: {syncStatus}</p>
+      {syncStatus === "refresh_required" && (
+        <RefreshRequiredBanner onResolve={() => setShowRecoveryDialog(true)} />
+      )}
+      {showRecoveryDialog && dbState && queueState && (
+        <ConflictRecoveryDialog
+          workflowId={workflowId}
+          db={dbState}
+          queue={queueState}
+          localRevision={localRevision}
+          onDismiss={() => setShowRecoveryDialog(false)}
+          onDiscardConfirmed={handleDiscardAndReload}
+        />
+      )}
       <WorkflowEditor
         initialGraph={initialGraph}
         onLocalEvent={handleLocalEvent}
