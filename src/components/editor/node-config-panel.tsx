@@ -36,12 +36,14 @@ export function NodeConfigPanel({ node, workspaceId, onChange }: NodeConfigPanel
       ) : null}
       {node.type === "transform_json" ? (
         <TransformJsonFields
+          key={node.id}
           config={node.config as TransformJsonNodeConfig}
           onChange={(config) => onChange(config)}
         />
       ) : null}
       {node.type === "condition" ? (
         <ConditionFields
+          key={node.id}
           config={node.config as ConditionNodeConfig}
           onChange={onChange}
         />
@@ -55,7 +57,11 @@ export function NodeConfigPanel({ node, workspaceId, onChange }: NodeConfigPanel
         />
       ) : null}
       {node.type === "log" ? (
-        <LogFields config={node.config as LogNodeConfig} onChange={onChange} />
+        <LogFields
+          key={node.id}
+          config={node.config as LogNodeConfig}
+          onChange={onChange}
+        />
       ) : null}
     </aside>
   );
@@ -68,31 +74,31 @@ function TransformJsonFields({
   config: TransformJsonNodeConfig;
   onChange(config: TransformJsonNodeConfig): void;
 }) {
-  const mapping = config.mappings[0] ?? { target: "", source: "" };
+  const initial = config.mappings[0] ?? { target: "", source: "" };
+  const [target, setTarget] = useState(initial.target);
+  const [source, setSource] = useState(initial.source);
+
+  function persist(nextTarget: string, nextSource: string) {
+    if (nextTarget.trim() && nextSource.trim()) {
+      onChange({ mappings: [{ target: nextTarget, source: nextSource }] });
+    }
+  }
 
   return (
     <>
       <label htmlFor="mapping-target">Mapping target</label>
       <input
         id="mapping-target"
-        onChange={(event) =>
-          onChange({
-            mappings: [{ ...mapping, target: event.target.value }],
-          })
-        }
+        onChange={(e) => { setTarget(e.target.value); persist(e.target.value, source); }}
         type="text"
-        value={mapping.target}
+        value={target}
       />
       <label htmlFor="mapping-source">Mapping source</label>
       <input
         id="mapping-source"
-        onChange={(event) =>
-          onChange({
-            mappings: [{ ...mapping, source: event.target.value }],
-          })
-        }
+        onChange={(e) => { setSource(e.target.value); persist(target, e.target.value); }}
         type="text"
-        value={mapping.source}
+        value={source}
       />
     </>
   );
@@ -105,16 +111,19 @@ function ConditionFields({
   config: ConditionNodeConfig;
   onChange(config: ConditionNodeConfig): void;
 }) {
+  const [leftPath, setLeftPath] = useState(config.leftPath);
+
   return (
     <>
       <label htmlFor="condition-left-path">Left path</label>
       <input
         id="condition-left-path"
-        onChange={(event) =>
-          onChange({ ...config, leftPath: event.target.value })
-        }
+        onChange={(e) => {
+          setLeftPath(e.target.value);
+          if (e.target.value.trim()) onChange({ ...config, leftPath: e.target.value });
+        }}
         type="text"
-        value={config.leftPath}
+        value={leftPath}
       />
       <label htmlFor="condition-operator">Operator</label>
       <select
@@ -122,6 +131,7 @@ function ConditionFields({
         onChange={(event) =>
           onChange({
             ...config,
+            leftPath,
             operator: event.target.value as ConditionNodeConfig["operator"],
           })
         }
@@ -138,7 +148,7 @@ function ConditionFields({
       <input
         id="condition-right-value"
         onChange={(event) =>
-          onChange({ ...config, rightValue: event.target.value })
+          onChange({ ...config, leftPath, rightValue: event.target.value })
         }
         type="text"
         value={String(config.rightValue ?? "")}
@@ -156,6 +166,7 @@ function HttpRequestFields({
   workspaceId?: string;
   onChange(config: HttpRequestNodeConfig): void;
 }) {
+  const [draftUrl, setDraftUrl] = useState(config.url);
   // Local draft state allows rows with an empty secretId (not yet selected).
   // Only headers with both a non-empty name and secretId are passed to onChange
   // so Zod validation in updateSelectedNodeConfig never sees incomplete rows.
@@ -165,17 +176,16 @@ function HttpRequestFields({
 
   const headerEntries = Object.entries(draftHeaders);
 
-  function persistValid(headers: Record<string, SecretReference>) {
-    const valid = Object.fromEntries(
+  function validHeaders(headers: Record<string, SecretReference>) {
+    return Object.fromEntries(
       Object.entries(headers).filter(([name, ref]) => name.trim() !== "" && ref.secretId !== ""),
     );
-    onChange({ ...config, headers: valid });
   }
 
   function setHeader(name: string, ref: SecretReference) {
     const updated = { ...draftHeaders, [name]: ref };
     setDraftHeaders(updated);
-    persistValid(updated);
+    onChange({ ...config, url: draftUrl, headers: validHeaders(updated) });
   }
 
   function removeHeader(name: string) {
@@ -183,7 +193,7 @@ function HttpRequestFields({
       Object.entries(draftHeaders).filter(([k]) => k !== name),
     );
     setDraftHeaders(rest);
-    persistValid(rest);
+    onChange({ ...config, url: draftUrl, headers: validHeaders(rest) });
   }
 
   function addHeader() {
@@ -214,9 +224,17 @@ function HttpRequestFields({
       <label htmlFor="http-url">URL</label>
       <input
         id="http-url"
-        onChange={(event) => onChange({ ...config, url: event.target.value })}
+        onChange={(e) => {
+          setDraftUrl(e.target.value);
+          try {
+            new URL(e.target.value);
+            onChange({ ...config, headers: validHeaders(draftHeaders), url: e.target.value });
+          } catch {
+            // invalid URL — keep last valid config, show draft in input
+          }
+        }}
         type="url"
-        value={config.url}
+        value={draftUrl}
       />
       <label htmlFor="http-body-mode">Body mode</label>
       <select
@@ -244,7 +262,7 @@ function HttpRequestFields({
                   Object.entries(draftHeaders).map(([k, v]) => [k === name ? newName : k, v]),
                 );
                 setDraftHeaders(updated);
-                persistValid(updated);
+                onChange({ ...config, url: draftUrl, headers: validHeaders(updated) });
               }}
               type="text"
               value={name}
@@ -295,14 +313,20 @@ function LogFields({
   config: LogNodeConfig;
   onChange(config: LogNodeConfig): void;
 }) {
+  const [label, setLabel] = useState(config.label ?? "");
+
   return (
     <>
       <label htmlFor="log-label">Log label</label>
       <input
         id="log-label"
-        onChange={(event) => onChange({ label: event.target.value })}
+        onChange={(e) => {
+          setLabel(e.target.value);
+          // Empty string maps to undefined (label is optional but min(1) if present)
+          onChange({ label: e.target.value.trim() || undefined });
+        }}
         type="text"
-        value={config.label ?? ""}
+        value={label}
       />
     </>
   );
