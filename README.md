@@ -56,6 +56,66 @@ The MVP should prove one complete vertical slice:
 - Complex scheduling
 - Canvas virtualization unless profiling proves it is needed
 
+## Getting Started
+
+### Prerequisites
+
+- Node.js 22+
+- [Supabase CLI](https://supabase.com/docs/guides/cli)
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Start local Supabase
+
+```bash
+supabase start
+```
+
+Starts a local Postgres instance and applies all migrations from `supabase/migrations/`. The CLI prints local URLs and keys — copy them for the next step.
+
+### 3. Configure environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in the values from the `supabase start` output. Generate `APP_ENCRYPTION_KEY_BASE64` with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+### 4. Run the dev server
+
+```bash
+npm run dev
+```
+
+### 5. Run the worker (separate terminal)
+
+```bash
+npm run worker:dev
+```
+
+The worker polls for queued runs every 2 s. Without it, webhook-triggered runs stay in `queued` status indefinitely.
+
+### Checks
+
+```bash
+npm run lint          # ESLint
+npm run typecheck     # TypeScript
+npm run format:check  # Prettier
+npm run test          # Vitest unit tests
+```
+
+CI runs all of the above plus `npm run build` on every push/PR to `main`.
+
+---
+
 ## Architecture Notes
 
 Webhook triggers should use opaque high-entropy public tokens, not guessable workflow IDs. Store token hashes in the database and return constant-shape responses for invalid or disabled triggers.
