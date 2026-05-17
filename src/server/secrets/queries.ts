@@ -23,11 +23,14 @@ export type CreateSecretRecord = {
   description?: string;
 } & EncryptedValue;
 
+export type EncryptedSecretRecord = SecretMetadata & EncryptedValue;
+
 export type SecretQueries = {
   userCanAccessWorkspace(userId: string, workspaceId: string): Promise<boolean>;
   createSecret(input: CreateSecretRecord): Promise<SecretMetadata>;
   listSecretsForWorkspace(workspaceId: string): Promise<SecretMetadata[]>;
   findSecretById(secretId: string): Promise<SecretMetadata | null>;
+  findSecretByIdWithCiphertext(secretId: string): Promise<EncryptedSecretRecord | null>;
   updateSecretValue(secretId: string, encrypted: EncryptedValue): Promise<SecretMetadata>;
   updateSecretStatus(secretId: string, status: "active" | "disabled"): Promise<SecretMetadata>;
 };
@@ -124,6 +127,33 @@ export function createSecretQueries(db: Queryable = getPool()): SecretQueries {
       );
       const row = result.rows[0];
       return row ? mapRow(row) : null;
+    },
+
+    async findSecretByIdWithCiphertext(secretId) {
+      const result = await db.query<{
+        id: string; workspace_id: string; name: string; description: string | null;
+        status: string; key_version: string; created_at: Date; updated_at: Date; rotated_at: Date | null;
+        ciphertext: string; nonce: string; auth_tag: string;
+      }>(
+        `
+          select id, workspace_id, name, description, status, key_version,
+                 created_at, updated_at, rotated_at,
+                 ciphertext, nonce, auth_tag
+          from public.workflow_secrets
+          where id = $1
+          limit 1
+        `,
+        [secretId],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      return {
+        ...mapRow(row),
+        ciphertext: row.ciphertext,
+        nonce: row.nonce,
+        authTag: row.auth_tag,
+        keyVersion: row.key_version,
+      };
     },
 
     async updateSecretValue(secretId, encrypted) {
