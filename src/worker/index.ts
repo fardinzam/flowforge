@@ -4,6 +4,7 @@ import "./worker-env";
 import { getPool } from "@/server/db/pool";
 
 import { claimRun } from "./claim-run";
+import { executeRun } from "./execution/execute-run";
 
 const POLL_INTERVAL_MS = 2_000;
 
@@ -12,7 +13,7 @@ async function poll(): Promise<void> {
     const db = getPool();
     const run = await claimRun(db);
     if (run) {
-      console.log("[worker] Claimed run", run.id);
+      await executeRun(run, db);
     }
   } catch (err) {
     console.error("[worker] Unhandled error in poll:", err);
