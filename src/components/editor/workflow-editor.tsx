@@ -25,9 +25,12 @@ import { NodeConfigPanel } from "./node-config-panel";
 import { NodePalette } from "./node-palette";
 import { useEditorHistory } from "./use-editor-history";
 
+type NodeStepStatus = { status: string; errorJson?: unknown };
+
 type WorkflowEditorProps = {
   initialGraph: WorkflowGraph;
   workspaceId?: string;
+  nodeStatusMap?: ReadonlyMap<string, NodeStepStatus>;
   onLocalEvent?(event: WorkflowEvent): void;
 };
 
@@ -39,6 +42,7 @@ type DragState = {
 export function WorkflowEditor({
   initialGraph,
   workspaceId,
+  nodeStatusMap,
   onLocalEvent,
 }: WorkflowEditorProps) {
   const {
@@ -200,6 +204,7 @@ export function WorkflowEditor({
         connectingFromNodeId={connectingFromNodeId}
         graph={state.graph}
         selectedNodeId={state.selectedNodeId}
+        nodeStatusMap={nodeStatusMap}
         onConnectFrom={setConnectingFromNodeId}
         onConnectTo={(nodeId) => {
           if (!connectingFromNodeId) {
@@ -234,6 +239,21 @@ export function WorkflowEditor({
         }}
         onNodePointerDown={handleNodePointerDown}
       />
+      {nodeStatusMap && selectedNode && nodeStatusMap.has(selectedNode.id) && (
+        <aside aria-label="Step detail">
+          <h3>Step: {selectedNode.id}</h3>
+          <p>Status: {nodeStatusMap.get(selectedNode.id)!.status}</p>
+          {nodeStatusMap.get(selectedNode.id)!.errorJson !== null &&
+            nodeStatusMap.get(selectedNode.id)!.errorJson !== undefined && (
+              <details>
+                <summary>Error</summary>
+                <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
+                  {JSON.stringify(nodeStatusMap.get(selectedNode.id)!.errorJson, null, 2)}
+                </pre>
+              </details>
+            )}
+        </aside>
+      )}
       <NodeConfigPanel
         node={selectedNode}
         workspaceId={workspaceId}

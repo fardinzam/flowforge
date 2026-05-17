@@ -3,10 +3,13 @@ import type { WorkflowGraph, WorkflowPosition } from "@/domain/workflows/types";
 import { EdgeLayer } from "./edge-layer";
 import { NodeCard } from "./node-card";
 
+type NodeStepStatus = { status: string };
+
 type CanvasProps = {
   connectingFromNodeId: string | null;
   graph: WorkflowGraph;
   selectedNodeId: string | null;
+  nodeStatusMap?: ReadonlyMap<string, NodeStepStatus>;
   onConnectFrom(nodeId: string): void;
   onConnectTo(nodeId: string): void;
   onDeleteEdge(edgeId: string): void;
@@ -17,6 +20,7 @@ export function Canvas({
   connectingFromNodeId,
   graph,
   selectedNodeId,
+  nodeStatusMap,
   onConnectFrom,
   onConnectTo,
   onDeleteEdge,
@@ -53,6 +57,7 @@ export function Canvas({
             isSelected={node.id === selectedNodeId}
             key={node.id}
             node={node}
+            stepStatus={nodeStatusMap?.get(node.id)?.status as Parameters<typeof NodeCard>[0]["stepStatus"]}
             onConnectFrom={onConnectFrom}
             onConnectTo={onConnectTo}
             onPointerDown={onNodePointerDown}
