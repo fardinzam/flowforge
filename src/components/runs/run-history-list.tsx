@@ -31,20 +31,30 @@ export function RunHistoryList({ workflowId }: RunHistoryListProps) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function load(cursor?: string) {
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/workflows/${workflowId}/history`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { runs: RunSummary[]; nextCursor: string | null } | null) => {
+        if (!cancelled && data) {
+          setRuns(data.runs);
+          setNextCursor(data.nextCursor);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [workflowId]);
+
+  async function loadMore(cursor: string) {
     setLoading(true);
-    const url = cursor
-      ? `/api/workflows/${workflowId}/history?before=${encodeURIComponent(cursor)}`
-      : `/api/workflows/${workflowId}/history`;
+    const url = `/api/workflows/${workflowId}/history?before=${encodeURIComponent(cursor)}`;
     const res = await fetch(url);
     if (!res.ok) { setLoading(false); return; }
     const data = (await res.json()) as { runs: RunSummary[]; nextCursor: string | null };
-    setRuns((prev) => cursor ? [...prev, ...data.runs] : data.runs);
+    setRuns((prev) => [...prev, ...data.runs]);
     setNextCursor(data.nextCursor);
     setLoading(false);
   }
-
-  useEffect(() => { void load(); }, [workflowId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading && runs.length === 0) return <p>Loading run history…</p>;
   if (runs.length === 0) return <p>No runs yet.</p>;
@@ -71,7 +81,7 @@ export function RunHistoryList({ workflowId }: RunHistoryListProps) {
       {nextCursor && (
         <button
           disabled={loading}
-          onClick={() => void load(nextCursor)}
+          onClick={() => void loadMore(nextCursor)}
           type="button"
         >
           {loading ? "Loading…" : "Load more"}

@@ -26,14 +26,17 @@ const EMPTY_GRAPH: WorkflowGraph = {
   viewport: { x: 0, y: 0, zoom: 1 },
 };
 
+type NodeStepStatus = { status: string; errorJson?: unknown };
+
 type Props = {
   workflowId: string;
   workflowName: string;
   workspaceId: string;
   serverGraph: WorkflowGraph;
+  nodeStatusMap?: ReadonlyMap<string, NodeStepStatus>;
 };
 
-export function WorkflowEditorWithPersistence({ workflowId, workflowName, workspaceId, serverGraph }: Props) {
+export function WorkflowEditorWithPersistence({ workflowId, workflowName, workspaceId, serverGraph, nodeStatusMap }: Props) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [initialGraph, setInitialGraph] = useState<WorkflowGraph>(EMPTY_GRAPH);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("saved_locally");
@@ -156,6 +159,7 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, worksp
       <WorkflowEditor
         initialGraph={initialGraph}
         workspaceId={workspaceId}
+        nodeStatusMap={nodeStatusMap}
         onLocalEvent={handleLocalEvent}
       />
     </section>
