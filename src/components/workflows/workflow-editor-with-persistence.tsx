@@ -38,10 +38,11 @@ type Props = {
   workflowName: string;
   workspaceId: string;
   serverGraph: WorkflowGraph;
+  serverRevision: number;
   nodeStatusMap?: ReadonlyMap<string, NodeStepStatus>;
 };
 
-export function WorkflowEditorWithPersistence({ workflowId, workflowName, workspaceId, serverGraph, nodeStatusMap }: Props) {
+export function WorkflowEditorWithPersistence({ workflowId, workflowName, workspaceId, serverGraph, serverRevision, nodeStatusMap }: Props) {
   const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
   const [initialGraph, setInitialGraph] = useState<WorkflowGraph>(EMPTY_GRAPH);
@@ -89,7 +90,9 @@ export function WorkflowEditorWithPersistence({ workflowId, workflowName, worksp
 
       if (cancelled) return;
 
-      const currentRevision = metadata?.serverRevision ?? 0;
+      // Fall back to serverRevision from the page prop so fresh sessions
+      // don't replay all historic events from revision 0.
+      const currentRevision = metadata?.serverRevision ?? serverRevision;
 
       // Prefer the local IndexedDB snapshot (always current after edits).
       // Fall back to the server graph so other browsers see synced state.

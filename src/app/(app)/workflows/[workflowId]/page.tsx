@@ -56,6 +56,7 @@ export default async function WorkflowDetailPage({
         workflowName={workflow.name}
         workspaceId={workflow.workspaceId}
         serverGraph={workflow.graph}
+        serverRevision={workflow.version}
         nodeStatusMap={nodeStatusMap}
       />
       <RunHistoryList workflowId={workflowId} />

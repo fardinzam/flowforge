@@ -28,6 +28,7 @@ export async function GET(request: Request, context: StreamRouteContext) {
   const abortController = new AbortController();
   request.signal.addEventListener("abort", () => abortController.abort());
 
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -37,7 +38,7 @@ export async function GET(request: Request, context: StreamRouteContext) {
           afterRevision,
           abortController.signal,
         )) {
-          controller.enqueue(encodeEvent(event));
+          controller.enqueue(encoder.encode(encodeEvent(event)));
         }
       } finally {
         controller.close();
