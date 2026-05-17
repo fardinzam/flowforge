@@ -25,7 +25,9 @@ export async function findExistingRevisions(
     [workflowId, clientEventIds],
   );
 
-  return new Map(result.rows.map((r) => [r.client_event_id, r.server_revision]));
+  return new Map(
+    result.rows.map((r) => [r.client_event_id, r.server_revision]),
+  );
 }
 
 export async function insertWorkflowEvents(
@@ -39,30 +41,29 @@ export async function insertWorkflowEvents(
 ): Promise<void> {
   if (params.events.length === 0) return;
 
-  for (const { event, serverRevision } of params.events) {
-    await db.query(
-      `
-        insert into public.workflow_events (
-          workflow_id,
-          workspace_id,
-          actor_user_id,
-          client_event_id,
-          server_revision,
-          event_type,
-          event_schema_version,
-          payload
-        ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-      `,
-      [
-        params.workflowId,
-        params.workspaceId,
-        params.actorUserId,
-        event.clientEventId,
-        serverRevision,
-        event.type,
-        event.eventSchemaVersion,
-        JSON.stringify(event.payload),
-      ],
-    );
-  }
+  const placeholders = params.events
+    .map((_, i) => {
+      const b = i * 8;
+      return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8}::jsonb)`;
+    })
+    .join(",");
+
+  const values = params.events.flatMap(({ event, serverRevision }) => [
+    params.workflowId,
+    params.workspaceId,
+    params.actorUserId,
+    event.clientEventId,
+    serverRevision,
+    event.type,
+    event.eventSchemaVersion,
+    JSON.stringify(event.payload),
+  ]);
+
+  await db.query(
+    `INSERT INTO public.workflow_events
+       (workflow_id, workspace_id, actor_user_id, client_event_id,
+        server_revision, event_type, event_schema_version, payload)
+     VALUES ${placeholders}`,
+    values,
+  );
 }

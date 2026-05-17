@@ -1,6 +1,9 @@
 import { requireUser } from "@/server/auth/session";
 import { createRunQueries } from "@/server/runs/queries";
-import { pollWorkflowStream, type StreamEvent } from "@/server/realtime/workflow-stream";
+import {
+  pollWorkflowStream,
+  type StreamEvent,
+} from "@/server/realtime/workflow-stream";
 
 type StreamRouteContext = {
   params: Promise<{ workflowId: string }>;
@@ -17,6 +20,12 @@ export async function GET(request: Request, context: StreamRouteContext) {
   const { workflowId } = await context.params;
   const url = new URL(request.url);
   const afterRevision = Number(url.searchParams.get("afterRevision") ?? "0");
+
+  if (!Number.isInteger(afterRevision) || afterRevision < 0) {
+    return new Response("afterRevision must be a non-negative integer", {
+      status: 400,
+    });
+  }
 
   const q = createRunQueries();
   const workspaceId = await q.findWorkflowWorkspace(workflowId);
@@ -53,7 +62,7 @@ export async function GET(request: Request, context: StreamRouteContext) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     },
   });

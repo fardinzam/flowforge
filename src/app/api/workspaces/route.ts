@@ -9,13 +9,21 @@ import {
 export async function GET() {
   const user = await requireUser();
 
-  await bootstrapDefaultWorkspace({
-    id: user.id,
-    email: user.email,
-    name: user.user_metadata.name,
-  });
+  try {
+    await bootstrapDefaultWorkspace({
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata.name,
+    });
 
-  const workspaces = await listWorkspacesForUser(user.id);
+    const workspaces = await listWorkspacesForUser(user.id);
 
-  return NextResponse.json({ workspaces });
+    return NextResponse.json({ workspaces });
+  } catch (err) {
+    console.error("[workspaces] Unhandled error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 }

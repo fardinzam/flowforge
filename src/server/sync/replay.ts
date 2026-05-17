@@ -45,20 +45,30 @@ export async function getEventsAfterRevision(
   }
 
   const events: CommittedEvent[] = result.rows.map((row) => {
+    // pg returns timestamptz columns as Date objects at runtime despite the TS type
+    const rawCreatedAt = row.created_at as unknown;
+    const createdAt =
+      rawCreatedAt instanceof Date
+        ? rawCreatedAt.toISOString()
+        : String(rawCreatedAt);
     const raw = {
       clientEventId: row.client_event_id,
       type: row.event_type,
       eventSchemaVersion: row.event_schema_version,
       payload: row.payload,
-      createdAt: row.created_at,
+      createdAt,
     };
 
-    const parsed = workflowEventSchema.parse(migrateWorkflowEvent(raw as Parameters<typeof migrateWorkflowEvent>[0]));
+    const parsed = workflowEventSchema.parse(
+      migrateWorkflowEvent(raw as Parameters<typeof migrateWorkflowEvent>[0]),
+    );
     return { ...parsed, serverRevision: row.server_revision };
   });
 
   const latestRevision =
-    events.length > 0 ? events[events.length - 1]!.serverRevision : afterRevision;
+    events.length > 0
+      ? events[events.length - 1]!.serverRevision
+      : afterRevision;
 
   return { type: "events", events, latestRevision };
 }

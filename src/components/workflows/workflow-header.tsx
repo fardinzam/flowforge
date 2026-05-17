@@ -9,7 +9,6 @@ export function WorkflowHeader({ workflow }: WorkflowHeaderProps) {
     <header>
       <p>Workflow</p>
       <h1>{workflow.name}</h1>
-      <p aria-label="Sync status">Sync status: ready</p>
     </header>
   );
 }

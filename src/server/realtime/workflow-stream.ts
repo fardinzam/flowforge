@@ -6,7 +6,11 @@ import type { CommittedEvent } from "@/server/sync/events";
 import { getEventsAfterRevision } from "@/server/sync/replay";
 
 export type StreamEvent =
-  | { type: "workflow_events"; events: CommittedEvent[]; latestRevision: number }
+  | {
+      type: "workflow_events";
+      events: CommittedEvent[];
+      latestRevision: number;
+    }
   | { type: "runs_updated" }
   | { type: "snapshot_required" }
   | { type: "keepalive" };
@@ -50,37 +54,52 @@ export async function* pollWorkflowStream(
   let lastKeepalive = Date.now();
 
   while (!signal.aborted) {
-    // Check for new workflow events
-    const replayResult = await getEventsAfterRevision(workspaceId, workflowId, lastRevision, db);
+    try {
+      // Check for new workflow events
+      const replayResult = await getEventsAfterRevision(
+        workspaceId,
+        workflowId,
+        lastRevision,
+        db,
+      );
 
-    if (replayResult.type === "snapshot_required") {
-      yield { type: "snapshot_required" };
-      return;
-    }
+      if (replayResult.type === "snapshot_required") {
+        yield { type: "snapshot_required" };
+        return;
+      }
 
-    if (replayResult.events.length > 0) {
-      lastRevision = replayResult.latestRevision;
-      yield {
-        type: "workflow_events",
-        events: replayResult.events,
-        latestRevision: replayResult.latestRevision,
-      };
-    }
+      if (replayResult.events.length > 0) {
+        lastRevision = replayResult.latestRevision;
+        yield {
+          type: "workflow_events",
+          events: replayResult.events,
+          latestRevision: replayResult.latestRevision,
+        };
+      }
 
-    // Check for completed runs
-    const hasRuns = await hasRecentRunUpdates(db, workflowId, workspaceId, lastRunCheck);
-    if (hasRuns) {
-      lastRunCheck = new Date();
-      yield { type: "runs_updated" };
-    }
+      // Check for completed runs
+      const hasRuns = await hasRecentRunUpdates(
+        db,
+        workflowId,
+        workspaceId,
+        lastRunCheck,
+      );
+      if (hasRuns) {
+        lastRunCheck = new Date();
+        yield { type: "runs_updated" };
+      }
 
-    // Keepalive
-    if (Date.now() - lastKeepalive >= KEEPALIVE_INTERVAL_MS) {
-      lastKeepalive = Date.now();
-      yield { type: "keepalive" };
-    }
+      // Keepalive
+      if (Date.now() - lastKeepalive >= KEEPALIVE_INTERVAL_MS) {
+        lastKeepalive = Date.now();
+        yield { type: "keepalive" };
+      }
 
-    if (!signal.aborted) {
+      if (!signal.aborted) {
+        await sleep(POLL_INTERVAL_MS);
+      }
+    } catch (err) {
+      console.error("[stream] Poll error — will retry:", err);
       await sleep(POLL_INTERVAL_MS);
     }
   }

@@ -16,6 +16,12 @@ export async function GET(request: Request, context: HistoryRouteContext) {
   const limit = Math.min(Math.max(1, limitParam), 50);
   const beforeParam = url.searchParams.get("before");
   const before = beforeParam ? new Date(beforeParam) : undefined;
+  if (before && isNaN(before.getTime())) {
+    return NextResponse.json(
+      { error: "Invalid before cursor" },
+      { status: 400 },
+    );
+  }
 
   const q = createRunQueries();
 
@@ -28,10 +34,17 @@ export async function GET(request: Request, context: HistoryRouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const runs = await q.listRunsForWorkflow(workflowId, workspaceId, limit + 1, before);
+  const runs = await q.listRunsForWorkflow(
+    workflowId,
+    workspaceId,
+    limit + 1,
+    before,
+  );
   const hasMore = runs.length > limit;
   const page = hasMore ? runs.slice(0, limit) : runs;
-  const nextCursor = hasMore ? page[page.length - 1]!.queuedAt.toISOString() : null;
+  const nextCursor = hasMore
+    ? page[page.length - 1]!.queuedAt.toISOString()
+    : null;
 
   return NextResponse.json({ runs: page, nextCursor });
 }

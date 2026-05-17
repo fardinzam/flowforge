@@ -16,6 +16,14 @@ export async function POST(request: Request, context: HookRouteContext) {
     payload = {};
   }
 
-  const result = await handleWebhook(token, payload);
-  return NextResponse.json(result);
+  try {
+    const result = await handleWebhook(token, payload);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("[webhook] Unhandled error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 }

@@ -30,33 +30,53 @@ export function RunHistoryList({ workflowId }: RunHistoryListProps) {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/workflows/${workflowId}/history`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { runs: RunSummary[]; nextCursor: string | null } | null) => {
-        if (!cancelled && data) {
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data: { runs: RunSummary[]; nextCursor: string | null }) => {
+        if (!cancelled) {
           setRuns(data.runs);
           setNextCursor(data.nextCursor);
           setLoading(false);
         }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFetchError(true);
+          setLoading(false);
+        }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [workflowId]);
 
   async function loadMore(cursor: string) {
     setLoading(true);
     const url = `/api/workflows/${workflowId}/history?before=${encodeURIComponent(cursor)}`;
     const res = await fetch(url);
-    if (!res.ok) { setLoading(false); return; }
-    const data = (await res.json()) as { runs: RunSummary[]; nextCursor: string | null };
+    if (!res.ok) {
+      setLoading(false);
+      return;
+    }
+    const data = (await res.json()) as {
+      runs: RunSummary[];
+      nextCursor: string | null;
+    };
     setRuns((prev) => [...prev, ...data.runs]);
     setNextCursor(data.nextCursor);
     setLoading(false);
   }
 
   if (loading && runs.length === 0) return <p>Loading run history…</p>;
+  if (fetchError)
+    return <p role="alert">Failed to load run history. Refresh to retry.</p>;
   if (runs.length === 0) return <p>No runs yet.</p>;
 
   return (

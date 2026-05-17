@@ -7,7 +7,8 @@ type TriggerState =
   | { phase: "none" }
   | { phase: "active"; triggerId: string; lastChars: string }
   | { phase: "disabled" }
-  | { phase: "revealed"; url: string };
+  | { phase: "revealed"; url: string }
+  | { phase: "error" };
 
 type TriggerUrlPanelProps = {
   workflowId: string;
@@ -16,10 +17,14 @@ type TriggerUrlPanelProps = {
 export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
   const [state, setState] = useState<TriggerState>({ phase: "loading" });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/workflows/${workflowId}/triggers`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then((data: { trigger: { id: string; status: string } | null }) => {
         if (!data.trigger) {
           setState({ phase: "none" });
@@ -32,7 +37,8 @@ export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
             lastChars: data.trigger.id.slice(-6),
           });
         }
-      });
+      })
+      .catch(() => setState({ phase: "error" }));
   }, [workflowId]);
 
   function buildUrl(token: string) {
@@ -41,17 +47,22 @@ export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
   }
 
   async function handleGenerate() {
+    setError(null);
     setBusy(true);
     const response = await fetch(`/api/workflows/${workflowId}/triggers`, {
       method: "POST",
     });
     setBusy(false);
-    if (!response.ok) return;
+    if (!response.ok) {
+      setError("Something went wrong. Please try again.");
+      return;
+    }
     const data = (await response.json()) as { token: string };
     setState({ phase: "revealed", url: buildUrl(data.token) });
   }
 
   async function handleRotate() {
+    setError(null);
     setBusy(true);
     const response = await fetch(`/api/workflows/${workflowId}/triggers`, {
       method: "PATCH",
@@ -59,12 +70,16 @@ export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
       body: JSON.stringify({ action: "rotate" }),
     });
     setBusy(false);
-    if (!response.ok) return;
+    if (!response.ok) {
+      setError("Something went wrong. Please try again.");
+      return;
+    }
     const data = (await response.json()) as { token: string };
     setState({ phase: "revealed", url: buildUrl(data.token) });
   }
 
   async function handleDisable() {
+    setError(null);
     setBusy(true);
     const response = await fetch(`/api/workflows/${workflowId}/triggers`, {
       method: "PATCH",
@@ -72,7 +87,11 @@ export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
       body: JSON.stringify({ action: "disable" }),
     });
     setBusy(false);
-    if (response.ok) setState({ phase: "disabled" });
+    if (!response.ok) {
+      setError("Something went wrong. Please try again.");
+      return;
+    }
+    setState({ phase: "disabled" });
   }
 
   async function handleCopy(url: string) {
@@ -83,9 +102,18 @@ export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
     return <section aria-label="Webhook trigger">Loading trigger...</section>;
   }
 
+  if (state.phase === "error") {
+    return (
+      <section aria-label="Webhook trigger">
+        <p role="alert">Failed to load trigger. Refresh to retry.</p>
+      </section>
+    );
+  }
+
   return (
     <section aria-label="Webhook trigger">
       <h2>Webhook trigger</h2>
+      {error && <p role="alert">{error}</p>}
 
       {state.phase === "none" && (
         <button disabled={busy} onClick={handleGenerate} type="button">
@@ -124,7 +152,9 @@ export function TriggerUrlPanel({ workflowId }: TriggerUrlPanelProps) {
       )}
 
       {state.phase === "disabled" && (
-        <p>Trigger is disabled. Re-enable by rotating to generate a new token.</p>
+        <p>
+          Trigger is disabled. Re-enable by rotating to generate a new token.
+        </p>
       )}
     </section>
   );
